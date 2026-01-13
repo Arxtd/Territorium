@@ -34,9 +34,9 @@ const Layout = ({ children }) => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Sidebar Desktop */}
       <aside className="hidden md:block fixed inset-y-0 left-0 z-30 w-64">
-        <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+        <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-200">
           <div className="flex items-center flex-shrink-0 px-4 pt-5 pb-4">
-            <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+            <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400 transition-colors duration-200">
               Territorium
             </h1>
           </div>
@@ -49,17 +49,17 @@ const Layout = ({ children }) => {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ease-in-out ${
                       isActive
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:translate-x-1'
                     }`}
                   >
                     <Icon
-                      className={`mr-3 flex-shrink-0 h-5 w-5 ${
+                      className={`mr-3 flex-shrink-0 h-5 w-5 transition-all duration-200 ${
                         isActive
                           ? 'text-primary-500 dark:text-primary-400'
-                          : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                          : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300 group-hover:scale-110'
                       }`}
                     />
                     {item.label}
@@ -68,14 +68,14 @@ const Layout = ({ children }) => {
               })}
             </nav>
           </div>
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
             <div className="flex-shrink-0 w-full group block">
               <div className="flex items-center">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate transition-colors duration-200">
                     {userProfile?.name || userProfile?.email}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate transition-colors duration-200">
                     {userProfile?.role === 'superintendente'
                       ? 'Superintendente'
                       : 'Dirigente'}
@@ -88,23 +88,23 @@ const Layout = ({ children }) => {
                     e.preventDefault()
                     toggleTheme()
                   }}
-                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95"
                   aria-label="Alternar tema"
                   type="button"
                 >
                   {isDark ? (
-                    <Sun className="h-5 w-5" />
+                    <Sun className="h-5 w-5 transition-transform duration-200" />
                   ) : (
-                    <Moon className="h-5 w-5" />
+                    <Moon className="h-5 w-5 transition-transform duration-200" />
                   )}
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95"
                   aria-label="Sair"
                   type="button"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-5 w-5 transition-transform duration-200" />
                 </button>
               </div>
             </div>
@@ -115,10 +115,10 @@ const Layout = ({ children }) => {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 md:hidden"
+          className="fixed inset-0 z-40 md:hidden animate-in fade-in duration-300"
           onClick={() => setSidebarOpen(false)}
         >
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75"></div>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 transition-opacity duration-300"></div>
         </div>
       )}
 
@@ -126,7 +126,7 @@ const Layout = ({ children }) => {
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } transition-transform duration-300 ease-in-out md:hidden`}
+        } transition-transform duration-300 ease-in-out md:hidden shadow-xl`}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between px-4 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -135,7 +135,7 @@ const Layout = ({ children }) => {
             </h1>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110 active:scale-95"
             >
               <X className="h-6 w-6" />
             </button>
@@ -150,17 +150,17 @@ const Layout = ({ children }) => {
                     key={item.path}
                     to={item.path}
                     onClick={() => setSidebarOpen(false)}
-                    className={`group flex items-center px-3 py-2 text-base font-medium rounded-md ${
+                    className={`group flex items-center px-3 py-2 text-base font-medium rounded-md transition-all duration-200 ease-in-out ${
                       isActive
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:translate-x-1'
                     }`}
                   >
                     <Icon
-                      className={`mr-3 flex-shrink-0 h-6 w-6 ${
+                      className={`mr-3 flex-shrink-0 h-6 w-6 transition-all duration-200 ${
                         isActive
                           ? 'text-primary-500 dark:text-primary-400'
-                          : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                          : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-300 group-hover:scale-110'
                       }`}
                     />
                     {item.label}
@@ -217,7 +217,7 @@ const Layout = ({ children }) => {
         <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110 active:scale-95"
           >
             <Menu className="h-6 w-6" />
           </button>

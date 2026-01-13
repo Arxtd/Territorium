@@ -360,7 +360,7 @@ const MapEdit = () => {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
+                className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-md text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95 disabled:hover:scale-100"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {loading ? 'Salvando...' : 'Salvar Alterações'}

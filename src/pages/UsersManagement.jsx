@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import { Users, Plus, Trash2, Edit, X, Save } from 'lucide-react'
+import { Users, Plus, Trash2, Edit, X, Save, Key } from 'lucide-react'
 
 const UsersManagement = () => {
   const { isSuperintendente } = useAuth()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [showPasswordReset, setShowPasswordReset] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [formData, setFormData] = useState({
@@ -15,6 +17,15 @@ const UsersManagement = () => {
     email: '',
     password: '',
     role: 'dirigente',
+  })
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    role: 'dirigente',
+  })
+  const [passwordResetData, setPasswordResetData] = useState({
+    newPassword: '',
+    confirmPassword: '',
   })
 
   useEffect(() => {
@@ -99,6 +110,157 @@ const UsersManagement = () => {
     }
   }
 
+  const handleEditUser = (user) => {
+    setEditingUser(user.id)
+    setEditFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    })
+    setError('')
+    setSuccess('')
+  }
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+
+    if (!editFormData.name || !editFormData.email) {
+      setError('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    try {
+      // Atualizar na tabela users
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          name: editFormData.name,
+          email: editFormData.email,
+          role: editFormData.role,
+        })
+        .eq('id', editingUser)
+
+      if (updateError) throw updateError
+
+      // Atualizar email no auth (se mudou)
+      const user = users.find((u) => u.id === editingUser)
+      if (user && user.email !== editFormData.email) {
+        // Nota: Para atualizar email no auth, seria necessário usar admin API
+        // Por enquanto, apenas atualizamos na tabela users
+        console.warn('Email atualizado na tabela users, mas não no auth. Use a API admin para atualizar o email no auth.')
+      }
+
+      setSuccess('Usuário atualizado com sucesso!')
+      setEditingUser(null)
+      setEditFormData({ name: '', email: '', role: 'dirigente' })
+      fetchUsers()
+    } catch (err) {
+      console.error('Error updating user:', err)
+      setError(err.message || 'Erro ao atualizar usuário')
+    }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+
+    if (!passwordResetData.newPassword || !passwordResetData.confirmPassword) {
+      setError('Preencha todos os campos')
+      return
+    }
+
+    if (passwordResetData.newPassword !== passwordResetData.confirmPassword) {
+      setError('As senhas não coincidem')
+      return
+    }
+
+    if (passwordResetData.newPassword.length < 6) {
+      setError('A senha deve ter no mínimo 6 caracteres')
+      return
+    }
+
+    try {
+      // Para redefinir senha de outro usuário, precisamos usar a API admin do Supabase
+      // Isso requer uma Edge Function que use service_role key
+      const session = await supabase.auth.getSession()
+      const accessToken = session.data.session?.access_token
+
+      if (!accessToken) {
+        throw new Error('Sessão expirada. Por favor, faça login novamente.')
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      if (!supabaseUrl) {
+        throw new Error('Configuração do Supabase não encontrada. Verifique o arquivo .env')
+      }
+
+      // Construir URL da Edge Function
+      const functionUrl = `${supabaseUrl}/functions/v1/reset-user-password`
+      
+      console.log('Tentando chamar Edge Function:', functionUrl)
+
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId: showPasswordReset,
+          newPassword: passwordResetData.newPassword,
+        }),
+      })
+
+      // Verificar se a função existe (404)
+      if (response.status === 404) {
+        throw new Error(
+          'EDGE_FUNCTION_NOT_FOUND: A função reset-user-password não foi encontrada. ' +
+          'Por favor, crie a Edge Function no Supabase seguindo o guia GUIA_REDEFINIR_SENHA.md'
+        )
+      }
+
+      // Verificar outros erros HTTP
+      if (!response.ok) {
+        let errorMessage = `Erro HTTP ${response.status}`
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          // Se não conseguir parsear JSON, usar mensagem padrão
+        }
+        throw new Error(errorMessage)
+      }
+
+      const result = await response.json()
+      setSuccess(result.message || 'Senha redefinida com sucesso!')
+      setShowPasswordReset(null)
+      setPasswordResetData({ newPassword: '', confirmPassword: '' })
+    } catch (err) {
+      console.error('Error resetting password:', err)
+      
+      // Tratamento específico para diferentes tipos de erro
+      if (err.message?.includes('EDGE_FUNCTION_NOT_FOUND') || 
+          err.message?.includes('404') || 
+          err.name === 'TypeError' && err.message?.includes('fetch')) {
+        setError(
+          '❌ Edge Function não encontrada!\n\n' +
+          'A função reset-user-password precisa ser criada no Supabase.\n\n' +
+          '📖 Siga as instruções em: GUIA_REDEFINIR_SENHA.md\n\n' +
+          '💡 Alternativa: Use o painel do Supabase (Authentication > Users) para redefinir senhas manualmente.'
+        )
+      } else if (err.message?.includes('Não autorizado') || err.message?.includes('401')) {
+        setError('Sessão expirada. Por favor, faça login novamente.')
+      } else if (err.message?.includes('403') || err.message?.includes('superintendente')) {
+        setError('Apenas superintendentes podem redefinir senhas.')
+      } else {
+        setError(err.message || 'Erro ao redefinir senha. Verifique o console para mais detalhes.')
+      }
+    }
+  }
+
   const handleDeleteUser = async (userId, userEmail) => {
     if (!confirm(`Tem certeza que deseja excluir o usuário ${userEmail}?`)) {
       return
@@ -151,7 +313,7 @@ const UsersManagement = () => {
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="mt-4 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+          className="mt-4 sm:mt-0 inline-flex items-center px-5 py-2.5 border border-transparent shadow-md text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
         >
           <Plus className="h-5 w-5 mr-2" />
           Criar Usuário
@@ -288,13 +450,13 @@ const UsersManagement = () => {
                   })
                   setError('')
                 }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-md text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
               >
                 <Save className="h-4 w-4 mr-2" />
                 Criar Usuário
@@ -367,12 +529,29 @@ const UsersManagement = () => {
                         {new Date(user.created_at).toLocaleDateString('pt-BR')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleDeleteUser(user.id, user.email)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300 transition-colors duration-200"
+                            title="Editar usuário"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setShowPasswordReset(user.id)}
+                            className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 transition-colors duration-200"
+                            title="Redefinir senha"
+                          >
+                            <Key className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id, user.email)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
+                            title="Excluir usuário"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -382,6 +561,210 @@ const UsersManagement = () => {
           )}
         </div>
       </div>
+
+      {/* Modal de Edição de Usuário */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                Editar Usuário
+              </h2>
+              <button
+                onClick={() => {
+                  setEditingUser(null)
+                  setEditFormData({ name: '', email: '', role: 'dirigente' })
+                  setError('')
+                }}
+                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="edit-name"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Nome *
+                </label>
+                <input
+                  type="text"
+                  id="edit-name"
+                  value={editFormData.name}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, name: e.target.value })
+                  }
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="edit-email"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  id="edit-email"
+                  value={editFormData.email}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, email: e.target.value })
+                  }
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="edit-role"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Função *
+                </label>
+                <select
+                  id="edit-role"
+                  value={editFormData.role}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, role: e.target.value })
+                  }
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  required
+                >
+                  <option value="dirigente">Dirigente</option>
+                  <option value="superintendente">Superintendente</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingUser(null)
+                    setEditFormData({ name: '', email: '', role: 'dirigente' })
+                    setError('')
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-md text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Redefinição de Senha */}
+      {showPasswordReset && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-900 dark:text-white">
+                Redefinir Senha
+              </h2>
+              <button
+                onClick={() => {
+                  setShowPasswordReset(null)
+                  setPasswordResetData({ newPassword: '', confirmPassword: '' })
+                  setError('')
+                }}
+                className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="new-password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Nova Senha *
+                </label>
+                <input
+                  type="password"
+                  id="new-password"
+                  value={passwordResetData.newPassword}
+                  onChange={(e) =>
+                    setPasswordResetData({
+                      ...passwordResetData,
+                      newPassword: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  required
+                  minLength={6}
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Mínimo de 6 caracteres
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="confirm-password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Confirmar Nova Senha *
+                </label>
+                <input
+                  type="password"
+                  id="confirm-password"
+                  value={passwordResetData.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordResetData({
+                      ...passwordResetData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Atenção:</strong> A senha será redefinida sem necessidade de informar a senha anterior.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordReset(null)
+                    setPasswordResetData({ newPassword: '', confirmPassword: '' })
+                    setError('')
+                  }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all duration-200 hover:shadow-md"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-5 py-2.5 border border-transparent shadow-md text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Redefinir Senha
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
