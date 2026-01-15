@@ -114,3 +114,4 @@ WHERE schemaname = 'public'
 -- WHERE email = 'email@exemplo.com';
 
 
+

@@ -236,3 +236,4 @@ CREATE TRIGGER update_maps_updated_at BEFORE UPDATE ON public.maps
 
 
 
+

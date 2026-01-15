@@ -86,3 +86,4 @@ No painel do Supabase:
 A chave correta geralmente é a mais longa e começa com `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 
 
+

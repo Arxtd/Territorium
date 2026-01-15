@@ -166,3 +166,4 @@ Após criar a Edge Function:
 
 O que você precisa fazer é apenas **criar e fazer deploy da Edge Function** no painel do Supabase.
 
+

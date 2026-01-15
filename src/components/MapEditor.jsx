@@ -4,6 +4,40 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Trash2, X } from 'lucide-react'
 
+// Componente para Google Maps Tile Layer
+const GoogleTileLayer = ({ apiKey }) => {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!apiKey) {
+      console.warn('Google Maps API Key não configurada. Usando OpenStreetMap como fallback.')
+      return
+    }
+
+    // Criar tile layer do Google Maps
+    // lyrs=m = mapa padrão, lyrs=s = satélite, lyrs=y = híbrido
+    const googleLayer = L.tileLayer(
+      `https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${apiKey}`,
+      {
+        attribution: '© Google Maps',
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        tileSize: 256,
+      }
+    )
+
+    googleLayer.addTo(map)
+
+    return () => {
+      if (map.hasLayer(googleLayer)) {
+        map.removeLayer(googleLayer)
+      }
+    }
+  }, [map, apiKey])
+
+  return null
+}
+
 // Fix para ícones do Leaflet
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -238,10 +272,14 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
         style={{ height: '500px', width: '100%' }}
         whenCreated={() => {}}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
+          <GoogleTileLayer apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} />
+        ) : (
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        )}
         <MapClickHandler 
           onMapClick={handleMapClick} 
           mode={mode} 

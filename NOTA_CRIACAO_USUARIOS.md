@@ -85,3 +85,4 @@ A implementação atual usa `supabase.auth.signUp()` que funciona, mas pode envi
 
 
 
+

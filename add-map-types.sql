@@ -19,3 +19,4 @@ CREATE INDEX IF NOT EXISTS idx_maps_type ON public.maps(type);
 
 
 
+
