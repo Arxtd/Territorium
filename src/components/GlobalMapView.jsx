@@ -5,11 +5,12 @@ import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from 'react-l
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
-import { Layers, Flame } from 'lucide-react'
+import { Layers, Flame, Map, Satellite } from 'lucide-react'
 
 // Componente para Google Maps Tile Layer
-const GoogleTileLayer = ({ apiKey }) => {
+const GoogleTileLayer = ({ apiKey, mapType = 'roadmap' }) => {
   const map = useMap()
+  const layerRef = useRef(null)
 
   useEffect(() => {
     if (!apiKey) {
@@ -17,10 +18,21 @@ const GoogleTileLayer = ({ apiKey }) => {
       return
     }
 
+    // Remover layer anterior se existir
+    if (layerRef.current && map.hasLayer(layerRef.current)) {
+      map.removeLayer(layerRef.current)
+    }
+
+    // Definir tipo de mapa baseado no parâmetro
+    // lyrs=m = mapa padrão, lyrs=y = híbrido (satélite com ruas)
+    let lyrs = 'm'
+    if (mapType === 'satellite') {
+      lyrs = 'y' // Híbrido (satélite com ruas)
+    }
+
     // Criar tile layer do Google Maps
-    // lyrs=m = mapa padrão, lyrs=s = satélite, lyrs=y = híbrido
     const googleLayer = L.tileLayer(
-      `https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${apiKey}`,
+      `https://{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}&key=${apiKey}`,
       {
         attribution: '© Google Maps',
         maxZoom: 20,
@@ -30,13 +42,14 @@ const GoogleTileLayer = ({ apiKey }) => {
     )
 
     googleLayer.addTo(map)
+    layerRef.current = googleLayer
 
     return () => {
-      if (map.hasLayer(googleLayer)) {
-        map.removeLayer(googleLayer)
+      if (layerRef.current && map.hasLayer(layerRef.current)) {
+        map.removeLayer(layerRef.current)
       }
     }
-  }, [map, apiKey])
+  }, [map, apiKey, mapType])
 
   return null
 }
@@ -203,6 +216,7 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
   const [loading, setLoading] = useState(true)
   const [visitsData, setVisitsData] = useState({})
   const [heatmapMode, setHeatmapMode] = useState(false)
+  const [mapType, setMapType] = useState('roadmap') // roadmap, satellite
   const [visibleLayers, setVisibleLayers] = useState({
     congregacao: true,
     grupo: true,
@@ -374,7 +388,7 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden relative">
         {/* Controles de Camadas */}
-        <div className="absolute top-4 right-4 z-[1000] bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700">
+        <div className="absolute top-4 right-4 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-lg shadow-lg p-4 border border-white/20 dark:border-gray-700/30">
           <div className="flex items-center mb-3">
             <Layers className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Camadas</h3>
@@ -405,7 +419,7 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
           </div>
           
           {/* Toggle do Mapa de Calor */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-4 pt-4 border-t border-white/20 dark:border-gray-700/30">
             <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
@@ -428,6 +442,41 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
           </div>
         </div>
 
+        {/* Controles de Visualização do Mapa */}
+        {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+          <div className="absolute bottom-4 left-4 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-lg shadow-lg border border-white/20 dark:border-gray-700/30 overflow-hidden">
+            <div className="p-2">
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 px-2">
+                Visualização
+              </div>
+              <div className="flex flex-col space-y-1">
+                <button
+                  onClick={() => setMapType('roadmap')}
+                  className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                    mapType === 'roadmap'
+                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Map className="h-4 w-4 mr-2" />
+                  Mapa
+                </button>
+                <button
+                  onClick={() => setMapType('satellite')}
+                  className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                    mapType === 'satellite'
+                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Satellite className="h-4 w-4 mr-2" />
+                  Satélite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ height, width: '100%' }}>
           {visibleMaps.length === 0 ? (
             <div className="flex items-center justify-center h-full">
@@ -446,7 +495,10 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
               style={{ height: '100%', width: '100%' }}
             >
               {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
-                <GoogleTileLayer apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} />
+                <GoogleTileLayer 
+                  apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} 
+                  mapType={mapType}
+                />
               ) : (
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

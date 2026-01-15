@@ -2,11 +2,12 @@ import { useEffect, useState, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Trash2, X } from 'lucide-react'
+import { Trash2, X, Map, Satellite } from 'lucide-react'
 
 // Componente para Google Maps Tile Layer
-const GoogleTileLayer = ({ apiKey }) => {
+const GoogleTileLayer = ({ apiKey, mapType = 'roadmap' }) => {
   const map = useMap()
+  const layerRef = useRef(null)
 
   useEffect(() => {
     if (!apiKey) {
@@ -14,10 +15,21 @@ const GoogleTileLayer = ({ apiKey }) => {
       return
     }
 
+    // Remover layer anterior se existir
+    if (layerRef.current && map.hasLayer(layerRef.current)) {
+      map.removeLayer(layerRef.current)
+    }
+
+    // Definir tipo de mapa baseado no parâmetro
+    // lyrs=m = mapa padrão, lyrs=y = híbrido (satélite com ruas)
+    let lyrs = 'm'
+    if (mapType === 'satellite') {
+      lyrs = 'y' // Híbrido (satélite com ruas)
+    }
+
     // Criar tile layer do Google Maps
-    // lyrs=m = mapa padrão, lyrs=s = satélite, lyrs=y = híbrido
     const googleLayer = L.tileLayer(
-      `https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${apiKey}`,
+      `https://{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}&key=${apiKey}`,
       {
         attribution: '© Google Maps',
         maxZoom: 20,
@@ -27,16 +39,18 @@ const GoogleTileLayer = ({ apiKey }) => {
     )
 
     googleLayer.addTo(map)
+    layerRef.current = googleLayer
 
     return () => {
-      if (map.hasLayer(googleLayer)) {
-        map.removeLayer(googleLayer)
+      if (layerRef.current && map.hasLayer(layerRef.current)) {
+        map.removeLayer(layerRef.current)
       }
     }
-  }, [map, apiKey])
+  }, [map, apiKey, mapType])
 
   return null
 }
+
 
 // Fix para ícones do Leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -103,6 +117,7 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
   const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
   const [editingPoint, setEditingPoint] = useState(null)
   const [editingPolygon, setEditingPolygon] = useState(null)
+  const [mapType, setMapType] = useState('roadmap') // roadmap, satellite
   const isDragging = useRef(false)
 
   useEffect(() => {
@@ -265,7 +280,42 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
           border: none !important;
         }
       `}</style>
-      
+
+      {/* Controles de Visualização do Mapa */}
+      {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
+        <div className="absolute bottom-4 left-4 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-lg shadow-lg border border-white/20 dark:border-gray-700/30 overflow-hidden">
+          <div className="p-2">
+            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 px-2">
+              Visualização
+            </div>
+            <div className="flex flex-col space-y-1">
+                <button
+                  onClick={() => setMapType('roadmap')}
+                  className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                    mapType === 'roadmap'
+                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Map className="h-4 w-4 mr-2" />
+                  Mapa
+                </button>
+                <button
+                  onClick={() => setMapType('satellite')}
+                  className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                    mapType === 'satellite'
+                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                  }`}
+                >
+                  <Satellite className="h-4 w-4 mr-2" />
+                  Satélite
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <MapContainer
         center={initialCenter}
         zoom={initialZoom}
@@ -273,7 +323,10 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
         whenCreated={() => {}}
       >
         {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
-          <GoogleTileLayer apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} />
+          <GoogleTileLayer 
+            apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} 
+            mapType={mapType}
+          />
         ) : (
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
