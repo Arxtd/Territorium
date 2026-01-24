@@ -15,25 +15,11 @@ const MapsList = () => {
 
   const fetchMaps = async () => {
     try {
-      let query = supabase.from('maps').select('*').order('created_at', { ascending: false })
-
-      if (!isSuperintendente) {
-        // Para dirigentes, mostrar apenas mapas atribuídos
-        const { data: assignments } = await supabase
-          .from('map_assignments')
-          .select('map_id')
-          .eq('dirigente_id', userProfile?.id)
-
-        const mapIds = assignments?.map((a) => a.map_id) || []
-        if (mapIds.length === 0) {
-          setMaps([])
-          setLoading(false)
-          return
-        }
-        query = query.in('id', mapIds)
-      }
-
-      const { data, error } = await query
+      // Dirigentes agora podem visualizar todos os mapas cadastrados
+      const { data, error } = await supabase
+        .from('maps')
+        .select('*')
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
@@ -99,7 +85,7 @@ const MapsList = () => {
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             {isSuperintendente
               ? 'Gerencie todos os mapas cadastrados'
-              : 'Seus mapas atribuídos'}
+              : 'Visualize todos os mapas cadastrados'}
           </p>
         </div>
         {isSuperintendente && (
@@ -120,7 +106,7 @@ const MapsList = () => {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             {isSuperintendente
               ? 'Comece criando um novo mapa'
-              : 'Você não possui mapas atribuídos'}
+              : 'Nenhum mapa cadastrado no sistema'}
           </p>
           {isSuperintendente && (
             <div className="mt-6">

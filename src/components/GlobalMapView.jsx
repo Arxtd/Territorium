@@ -230,25 +230,10 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
 
   const fetchAllMaps = async () => {
     try {
-      let query = supabase.from('maps').select('id, name, description, type')
-
-      if (!isSuperintendente) {
-        // Para dirigentes, mostrar apenas mapas atribuídos
-        const { data: assignments } = await supabase
-          .from('map_assignments')
-          .select('map_id')
-          .eq('dirigente_id', userProfile?.id)
-
-        const mapIds = assignments?.map((a) => a.map_id) || []
-        if (mapIds.length === 0) {
-          setMaps([])
-          setLoading(false)
-          return
-        }
-        query = query.in('id', mapIds)
-      }
-
-      const { data: mapsData, error: mapsError } = await query
+      // Dirigentes agora podem visualizar todos os mapas cadastrados
+      const { data: mapsData, error: mapsError } = await supabase
+        .from('maps')
+        .select('id, name, description, type')
 
       if (mapsError) throw mapsError
 

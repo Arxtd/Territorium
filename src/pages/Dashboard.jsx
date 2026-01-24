@@ -40,23 +40,12 @@ const Dashboard = () => {
 
   const fetchAllMaps = async () => {
     try {
-      let query = supabase.from('maps').select('id, name, description, type').order('name', { ascending: true })
-
-      if (!isSuperintendente) {
-        const { data: assignments } = await supabase
-          .from('map_assignments')
-          .select('map_id')
-          .eq('dirigente_id', userProfile?.id)
-
-        const mapIds = assignments?.map((a) => a.map_id) || []
-        if (mapIds.length === 0) {
-          setAllMaps([])
-          return
-        }
-        query = query.in('id', mapIds)
-      }
-
-      const { data, error } = await query
+      // Dirigentes agora podem visualizar todos os mapas cadastrados
+      const { data, error } = await supabase
+        .from('maps')
+        .select('id, name, description, type')
+        .order('name', { ascending: true })
+      
       if (error) throw error
       setAllMaps(data || [])
     } catch (error) {
@@ -112,15 +101,12 @@ const Dashboard = () => {
           pendingMaps,
         })
       } else {
-        // Estatísticas para Dirigente
-        const { data: assignments, error: assignmentsError } = await supabase
-          .from('map_assignments')
-          .select('map_id')
-          .eq('dirigente_id', userProfile?.id)
+        // Estatísticas para Dirigente - agora pode ver todos os mapas
+        const { data: maps, error: mapsError } = await supabase
+          .from('maps')
+          .select('id')
 
-        if (assignmentsError) throw assignmentsError
-
-        const assignedMapIds = assignments?.map((a) => a.map_id) || []
+        if (mapsError) throw mapsError
 
         const { data: visits, error: visitsError } = await supabase
           .from('map_visits')
@@ -130,13 +116,12 @@ const Dashboard = () => {
         if (visitsError) throw visitsError
 
         const visitedMapIds = new Set(visits?.map((v) => v.map_id) || [])
-        const pendingMaps = assignedMapIds.filter(
-          (id) => !visitedMapIds.has(id)
-        ).length
+        const totalMaps = maps?.length || 0
+        const pendingMaps = totalMaps - visitedMapIds.size
 
         setStats({
-          totalMaps: assignedMapIds.length,
-          assignedMaps: assignedMapIds.length,
+          totalMaps,
+          assignedMaps: totalMaps, // Todos os mapas estão disponíveis
           visitedMaps: visitedMapIds.size,
           pendingMaps,
         })
@@ -148,7 +133,7 @@ const Dashboard = () => {
 
   const statCards = [
     {
-      title: isSuperintendente ? 'Total de Mapas' : 'Mapas Atribuídos',
+      title: isSuperintendente ? 'Total de Mapas' : 'Total de Mapas',
       value: stats.totalMaps,
       icon: Map,
       color: 'bg-blue-500',
@@ -176,7 +161,7 @@ const Dashboard = () => {
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           {isSuperintendente
             ? 'Gerencie mapas e atribuições'
-            : 'Visualize seus mapas atribuídos'}
+            : 'Visualize todos os mapas cadastrados'}
         </p>
       </div>
 
@@ -318,7 +303,7 @@ const Dashboard = () => {
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-200">
               {isSuperintendente
                 ? 'Visualize e gerencie todos os mapas cadastrados'
-                : 'Visualize seus mapas atribuídos'}
+                : 'Visualize todos os mapas cadastrados'}
             </p>
           </div>
         </Link>

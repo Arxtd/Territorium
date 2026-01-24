@@ -90,12 +90,11 @@ CREATE POLICY "Superintendentes can view all maps" ON public.maps
     )
   );
 
-CREATE POLICY "Dirigentes can view assigned maps" ON public.maps
+CREATE POLICY "Dirigentes can view all maps" ON public.maps
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM public.map_assignments
-      WHERE map_assignments.map_id = maps.id
-      AND map_assignments.dirigente_id = auth.uid()
+      SELECT 1 FROM public.users
+      WHERE users.id = auth.uid() AND users.role = 'dirigente'
     )
   );
 
@@ -135,9 +134,8 @@ CREATE POLICY "Users can view points of accessible maps" ON public.map_points
           WHERE users.id = auth.uid() AND users.role = 'superintendente'
         )
         OR EXISTS (
-          SELECT 1 FROM public.map_assignments
-          WHERE map_assignments.map_id = maps.id
-          AND map_assignments.dirigente_id = auth.uid()
+          SELECT 1 FROM public.users
+          WHERE users.id = auth.uid() AND users.role = 'dirigente'
         )
       )
     )
@@ -163,9 +161,8 @@ CREATE POLICY "Users can view polygons of accessible maps" ON public.map_polygon
           WHERE users.id = auth.uid() AND users.role = 'superintendente'
         )
         OR EXISTS (
-          SELECT 1 FROM public.map_assignments
-          WHERE map_assignments.map_id = maps.id
-          AND map_assignments.dirigente_id = auth.uid()
+          SELECT 1 FROM public.users
+          WHERE users.id = auth.uid() AND users.role = 'dirigente'
         )
       )
     )

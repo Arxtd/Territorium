@@ -79,15 +79,13 @@ const UsersManagement = () => {
         throw new Error('Erro ao criar usuário')
       }
 
-      // Inserir na tabela users
-      const { error: userError } = await supabase.from('users').insert([
-        {
-          id: authData.user.id,
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-        },
-      ])
+      // Inserir na tabela users usando função que bypassa RLS
+      const { error: userError } = await supabase.rpc('create_user_profile', {
+        p_id: authData.user.id,
+        p_name: formData.name,
+        p_email: formData.email,
+        p_role: formData.role,
+      })
 
       if (userError) {
         // Se falhar ao inserir na tabela, o usuário ficará no auth mas sem perfil
