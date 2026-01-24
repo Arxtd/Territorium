@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -110,7 +110,51 @@ const MapClickHandler = ({ onMapClick, mode, editingPolygon, isDrawingPolygon, i
   return null
 }
 
-const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, onPolygonsChange, mode = 'view' }) => {
+// Componente para ajustar o mapa aos bounds do mapa geral
+const FitBoundsToGlobalMap = ({ globalMap }) => {
+  const map = useMap()
+
+  useEffect(() => {
+    if (!globalMap) return
+
+    const allCoordinates = []
+
+    // Adicionar coordenadas dos polígonos do mapa geral
+    if (globalMap.polygons && globalMap.polygons.length > 0) {
+      globalMap.polygons.forEach((polygon) => {
+        if (polygon.coordinates && Array.isArray(polygon.coordinates)) {
+          polygon.coordinates.forEach((coord) => {
+            if (Array.isArray(coord) && coord.length >= 2) {
+              allCoordinates.push([coord[0], coord[1]])
+            }
+          })
+        }
+      })
+    }
+
+    // Adicionar coordenadas dos pontos do mapa geral (se não houver polígonos)
+    if (allCoordinates.length === 0 && globalMap.points && globalMap.points.length > 0) {
+      globalMap.points.forEach((point) => {
+        allCoordinates.push([point.latitude, point.longitude])
+      })
+    }
+
+    if (allCoordinates.length > 0) {
+      // Criar bounds a partir de todas as coordenadas
+      const bounds = L.latLngBounds(allCoordinates)
+      
+      // Ajustar o mapa para mostrar todos os bounds com padding
+      map.fitBounds(bounds, {
+        padding: [50, 50], // Padding de 50px em todas as direções
+        maxZoom: 18, // Limitar o zoom máximo
+      })
+    }
+  }, [map, globalMap])
+
+  return null
+}
+
+const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, onPolygonsChange, mode = 'view', globalMap = null }) => {
   const [points, setPoints] = useState(initialPoints)
   const [polygons, setPolygons] = useState(initialPolygons)
   const [currentPolygon, setCurrentPolygon] = useState([])
@@ -118,6 +162,9 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
   const [editingPoint, setEditingPoint] = useState(null)
   const [editingPolygon, setEditingPolygon] = useState(null)
   const [mapType, setMapType] = useState('roadmap') // roadmap, satellite
+  const [lastEditedVertexIndex, setLastEditedVertexIndex] = useState(null) // Índice do último vértice editado do polígono em edição
+  const [lastEditedCurrentPolygonIndex, setLastEditedCurrentPolygonIndex] = useState(null) // Índice do último vértice editado do polígono em criação
+  const [actionHistory, setActionHistory] = useState([]) // Histórico de ações para desfazer
   const isDragging = useRef(false)
 
   useEffect(() => {
@@ -128,19 +175,189 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
     setPolygons(initialPolygons)
   }, [initialPolygons])
 
-  // Calcular centro inicial apenas uma vez
+  // Adicionar ação ao histórico
+  const addToHistory = useCallback((action) => {
+    setActionHistory((prev) => [...prev, action])
+  }, [])
+
+  // Desfazer última ação
+  const undoLastAction = useCallback(() => {
+    setActionHistory((prev) => {
+      if (prev.length === 0) return prev
+
+      const lastAction = prev[prev.length - 1]
+      const newHistory = prev.slice(0, -1)
+
+      if (lastAction.type === 'add-point') {
+        // Remover último ponto adicionado
+        setPoints((currentPoints) => {
+          const updatedPoints = currentPoints.filter((p) => p.id !== lastAction.pointId)
+          onPointsChange?.(updatedPoints)
+          return updatedPoints
+        })
+      } else if (lastAction.type === 'add-polygon-vertex' && editingPolygon) {
+        // Remover último vértice adicionado ao polígono em edição
+        setPolygons((currentPolygons) => {
+          const polygon = currentPolygons.find((p) => p.id === editingPolygon)
+          if (polygon && polygon.coordinates.length > 3) {
+            const newCoordinates = polygon.coordinates.slice(0, -1)
+            const updatedPolygons = currentPolygons.map((p) =>
+              p.id === editingPolygon ? { ...p, coordinates: newCoordinates } : p
+            )
+            onPolygonsChange?.(updatedPolygons)
+            setLastEditedVertexIndex(
+              newCoordinates.length > 0 ? newCoordinates.length - 1 : null
+            )
+            return updatedPolygons
+          }
+          return currentPolygons
+        })
+      } else if (lastAction.type === 'add-current-polygon-vertex') {
+        // Remover último vértice do polígono em criação
+        setCurrentPolygon((current) => {
+          if (current.length > 0) {
+            const updatedPolygon = current.slice(0, -1)
+            setLastEditedCurrentPolygonIndex(
+              updatedPolygon.length > 0 ? updatedPolygon.length - 1 : null
+            )
+            return updatedPolygon
+          }
+          return current
+        })
+      }
+
+      return newHistory
+    })
+  }, [editingPolygon, onPointsChange, onPolygonsChange])
+
+  // Deletar vértice/ponto selecionado
+  const deleteSelected = useCallback(() => {
+    if (editingPoint !== null) {
+      removePoint(editingPoint)
+      setEditingPoint(null)
+    } else if (editingPolygon !== null && lastEditedVertexIndex !== null) {
+      const polygon = polygons.find((p) => p.id === editingPolygon)
+      if (polygon && polygon.coordinates.length > 3) {
+        removePolygonVertex(editingPolygon, lastEditedVertexIndex)
+        setLastEditedVertexIndex(null)
+      }
+    } else if (isDrawingPolygon && lastEditedCurrentPolygonIndex !== null) {
+      removeCurrentPolygonVertex(lastEditedCurrentPolygonIndex)
+    }
+  }, [editingPoint, editingPolygon, lastEditedVertexIndex, isDrawingPolygon, lastEditedCurrentPolygonIndex, polygons])
+
+  // Cancelar criação de polígono
+  const cancelPolygonCreation = useCallback(() => {
+    if (isDrawingPolygon) {
+      setCurrentPolygon([])
+      setIsDrawingPolygon(false)
+      setLastEditedCurrentPolygonIndex(null)
+      setActionHistory([]) // Limpar histórico ao cancelar
+    }
+  }, [isDrawingPolygon])
+
+  // Event listeners para atalhos de teclado
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+C ou Cmd+C para cancelar criação de polígono
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && !e.shiftKey) {
+        // Só cancelar se não estiver em um campo de input
+        const target = e.target
+        if (
+          target.tagName !== 'INPUT' &&
+          target.tagName !== 'TEXTAREA' &&
+          !target.isContentEditable &&
+          isDrawingPolygon
+        ) {
+          e.preventDefault()
+          cancelPolygonCreation()
+          return
+        }
+      }
+
+      // Ctrl+Z ou Cmd+Z para desfazer
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undoLastAction()
+        return
+      }
+
+      // Backspace ou Delete para deletar selecionado
+      if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.metaKey) {
+        // Só deletar se não estiver em um campo de input
+        const target = e.target
+        if (
+          target.tagName !== 'INPUT' &&
+          target.tagName !== 'TEXTAREA' &&
+          !target.isContentEditable
+        ) {
+          e.preventDefault()
+          deleteSelected()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [undoLastAction, deleteSelected, cancelPolygonCreation, isDrawingPolygon])
+
+  // Calcular centro inicial baseado no mapa geral (prioridade) ou nos pontos/polígonos do mapa atual
   const getInitialCenter = () => {
+    // Prioridade 1: Mapa geral (congregacao)
+    if (globalMap) {
+      // Se houver polígonos no mapa geral, calcular centro a partir deles
+      if (globalMap.polygons && globalMap.polygons.length > 0) {
+        const allCoords = []
+        globalMap.polygons.forEach((polygon) => {
+          if (polygon.coordinates && Array.isArray(polygon.coordinates)) {
+            polygon.coordinates.forEach((coord) => {
+              if (Array.isArray(coord) && coord.length >= 2) {
+                allCoords.push([coord[0], coord[1]])
+              }
+            })
+          }
+        })
+        if (allCoords.length > 0) {
+          const bounds = L.latLngBounds(allCoords)
+          return bounds.getCenter()
+        }
+      }
+      // Se houver pontos no mapa geral, usar o primeiro
+      if (globalMap.points && globalMap.points.length > 0) {
+        return [globalMap.points[0].latitude, globalMap.points[0].longitude]
+      }
+    }
+    
+    // Prioridade 2: Pontos do mapa atual
     if (points.length > 0 && points[0]?.lat && points[0]?.lng) {
       return [points[0].lat, points[0].lng]
     }
+    
+    // Prioridade 3: Polígonos do mapa atual
     if (polygons.length > 0 && polygons[0]?.coordinates && polygons[0].coordinates.length > 0) {
       return [polygons[0].coordinates[0][0], polygons[0].coordinates[0][1]]
     }
-    return [-2.9048, -41.7767] // Parnaíba, Piauí
+    
+    // Fallback: Parnaíba, Piauí
+    return [-2.9048, -41.7767]
   }
 
   const initialCenter = getInitialCenter()
-  const initialZoom = points.length > 0 || (polygons.length > 0 && polygons[0]?.coordinates?.length > 0) ? 13 : 12
+  
+  // Calcular zoom inicial baseado no mapa geral se disponível
+  const getInitialZoom = () => {
+    if (globalMap && globalMap.polygons && globalMap.polygons.length > 0) {
+      return 12 // Zoom ajustado para mostrar o mapa geral
+    }
+    if (points.length > 0 || (polygons.length > 0 && polygons[0]?.coordinates?.length > 0)) {
+      return 13
+    }
+    return 12
+  }
+  
+  const initialZoom = getInitialZoom()
 
   const updatePolygon = (id, newCoordinates) => {
     const updatedPolygons = polygons.map((p) =>
@@ -155,8 +372,18 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
       // Adicionar vértice ao polígono sendo editado
       const polygon = polygons.find(p => p.id === editingPolygon)
       if (polygon) {
-        const newCoordinates = [...polygon.coordinates, [latlng.lat, latlng.lng]]
+        const insertIndex = lastEditedVertexIndex !== null 
+          ? lastEditedVertexIndex + 1 
+          : polygon.coordinates.length
+        
+        const newCoordinates = [...polygon.coordinates]
+        newCoordinates.splice(insertIndex, 0, [latlng.lat, latlng.lng])
         updatePolygon(editingPolygon, newCoordinates)
+        
+        // Atualizar o índice do último vértice editado para o novo vértice
+        setLastEditedVertexIndex(insertIndex)
+        // Adicionar ao histórico
+        addToHistory({ type: 'add-polygon-vertex', polygonId: editingPolygon })
       }
       return
     }
@@ -175,13 +402,25 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
       const updatedPoints = [...points, newPoint]
       setPoints(updatedPoints)
       onPointsChange?.(updatedPoints)
+      // Adicionar ao histórico
+      addToHistory({ type: 'add-point', pointId: newPoint.id })
     } else if (mode === 'polygon' && !editingPolygon) {
       if (!isDrawingPolygon) {
         setIsDrawingPolygon(true)
         setCurrentPolygon([latlng])
+        setLastEditedCurrentPolygonIndex(0) // Primeiro vértice é o último editado
       } else {
-        const updatedPolygon = [...currentPolygon, latlng]
+        // Inserir após o último vértice editado, ou no final se não houver
+        const insertIndex = lastEditedCurrentPolygonIndex !== null 
+          ? lastEditedCurrentPolygonIndex + 1 
+          : currentPolygon.length
+        
+        const updatedPolygon = [...currentPolygon]
+        updatedPolygon.splice(insertIndex, 0, latlng)
         setCurrentPolygon(updatedPolygon)
+        setLastEditedCurrentPolygonIndex(insertIndex) // Novo vértice é o último editado
+        // Adicionar ao histórico
+        addToHistory({ type: 'add-current-polygon-vertex' })
       }
     }
   }
@@ -198,6 +437,52 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
     }
     setCurrentPolygon([])
     setIsDrawingPolygon(false)
+    setLastEditedCurrentPolygonIndex(null) // Resetar ao finalizar
+  }
+
+  // Atualizar vértice do polígono em criação
+  const updateCurrentPolygonVertex = (index, newLat, newLng) => {
+    const updatedPolygon = [...currentPolygon]
+    updatedPolygon[index] = { lat: newLat, lng: newLng }
+    setCurrentPolygon(updatedPolygon)
+    setLastEditedCurrentPolygonIndex(index) // Atualizar o índice do último vértice editado
+  }
+
+  // Remover vértice do polígono em criação
+  const removeCurrentPolygonVertex = (index) => {
+    if (currentPolygon.length > 3) {
+      const updatedPolygon = currentPolygon.filter((_, i) => i !== index)
+      setCurrentPolygon(updatedPolygon)
+    }
+  }
+
+  // Adicionar vértice no ponto médio do polígono em criação
+  const addCurrentPolygonVertexAtMidpoint = (index) => {
+    const current = currentPolygon[index]
+    const next = currentPolygon[(index + 1) % currentPolygon.length]
+    const midpoint = {
+      lat: (current.lat + next.lat) / 2,
+      lng: (current.lng + next.lng) / 2
+    }
+    const updatedPolygon = [...currentPolygon]
+    const insertIndex = index + 1
+    updatedPolygon.splice(insertIndex, 0, midpoint)
+    setCurrentPolygon(updatedPolygon)
+    setLastEditedCurrentPolygonIndex(insertIndex) // Novo vértice é o último editado
+  }
+
+  // Calcular pontos médios para o polígono em criação
+  const getCurrentPolygonMidpoints = () => {
+    const midpoints = []
+    for (let i = 0; i < currentPolygon.length; i++) {
+      const current = currentPolygon[i]
+      const next = currentPolygon[(i + 1) % currentPolygon.length]
+      midpoints.push({
+        lat: (current.lat + next.lat) / 2,
+        lng: (current.lng + next.lng) / 2
+      })
+    }
+    return midpoints
   }
 
   const removePoint = (id) => {
@@ -232,8 +517,14 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
         (current[1] + next[1]) / 2
       ]
       const newCoordinates = [...polygon.coordinates]
-      newCoordinates.splice(vertexIndex + 1, 0, midpoint)
+      const insertIndex = vertexIndex + 1
+      newCoordinates.splice(insertIndex, 0, midpoint)
       updatePolygon(polygonId, newCoordinates)
+      
+      // Atualizar o índice do último vértice editado para o novo vértice
+      if (polygonId === editingPolygon) {
+        setLastEditedVertexIndex(insertIndex)
+      }
     }
   }
 
@@ -251,6 +542,11 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
       const newCoordinates = [...polygon.coordinates]
       newCoordinates[vertexIndex] = [newLat, newLng]
       updatePolygon(polygonId, newCoordinates)
+      
+      // Atualizar o índice do último vértice editado
+      if (polygonId === editingPolygon) {
+        setLastEditedVertexIndex(vertexIndex)
+      }
     }
   }
 
@@ -341,6 +637,25 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
           isDragging={isDragging}
         />
         
+        {/* Ajustar bounds ao mapa geral se disponível */}
+        {globalMap && <FitBoundsToGlobalMap globalMap={globalMap} />}
+        
+        {/* Renderizar contorno do mapa geral em vermelho */}
+        {globalMap && globalMap.polygons && globalMap.polygons.map((polygon) => (
+          <Polygon
+            key={`global-${polygon.id}`}
+            positions={polygon.coordinates.map((coord) => [coord[0], coord[1]])}
+            pathOptions={{
+              color: '#ef4444', // Vermelho
+              fillColor: 'transparent', // Sem preenchimento
+              fillOpacity: 0,
+              weight: 2.5,
+              opacity: 1,
+            }}
+            interactive={false} // Não interativo, apenas visualização
+          />
+        ))}
+        
         {points.map((point) => (
           <Marker
             key={point.id}
@@ -404,8 +719,11 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
                 eventHandlers={{
                   click: (e) => {
                     if ((mode === 'edit' || mode === 'polygon') && !isDrawingPolygon && !isDragging.current) {
-                      setEditingPolygon(isEditing ? null : polygon.id)
+                      const newEditingState = isEditing ? null : polygon.id
+                      setEditingPolygon(newEditingState)
                       setEditingPoint(null)
+                      // Resetar o índice do último vértice editado quando iniciar/parar edição
+                      setLastEditedVertexIndex(newEditingState ? null : null)
                     }
                   },
                 }}
@@ -446,14 +764,16 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
                     dragstart: () => {
                       isDragging.current = true
                     },
-                    dragend: (e) => {
-                      isDragging.current = false
-                      const newPos = e.target.getLatLng()
-                      updatePolygonVertex(polygon.id, index, newPos.lat, newPos.lng)
-                    },
-                    click: (e) => {
-                      e.originalEvent.stopPropagation()
-                    },
+                  dragend: (e) => {
+                    isDragging.current = false
+                    const newPos = e.target.getLatLng()
+                    updatePolygonVertex(polygon.id, index, newPos.lat, newPos.lng)
+                  },
+                  click: (e) => {
+                    e.originalEvent.stopPropagation()
+                    // Selecionar este vértice para poder deletar com Backspace/Delete
+                    setLastEditedVertexIndex(index)
+                  },
                   }}
                 >
                   <Popup autoClose={false} closeOnClick={false}>
@@ -502,25 +822,118 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
         })}
 
         {isDrawingPolygon && currentPolygon.length > 0 && (
-          <Polygon
-            positions={currentPolygon}
-            pathOptions={{
-              color: '#f59e0b',
-              fillColor: '#fbbf24',
-              fillOpacity: 0.3,
-              weight: 2,
-            }}
-          />
+          <>
+            <Polygon
+              positions={currentPolygon.map((p) => [p.lat, p.lng])}
+              pathOptions={{
+                color: '#f59e0b',
+                fillColor: '#fbbf24',
+                fillOpacity: 0.3,
+                weight: 2.5,
+                dashArray: '10, 5',
+              }}
+            />
+            
+            {/* Handles nos vértices do polígono em criação */}
+            {currentPolygon.map((vertex, index) => (
+              <Marker
+                key={`current-vertex-${index}`}
+                position={[vertex.lat, vertex.lng]}
+                icon={createVertexHandleIcon()}
+                draggable={true}
+                zIndexOffset={1000}
+                eventHandlers={{
+                  dragstart: () => {
+                    isDragging.current = true
+                  },
+                  dragend: (e) => {
+                    isDragging.current = false
+                    const newPos = e.target.getLatLng()
+                    updateCurrentPolygonVertex(index, newPos.lat, newPos.lng)
+                  },
+                  click: (e) => {
+                    e.originalEvent.stopPropagation()
+                    // Selecionar este vértice para poder deletar com Backspace/Delete
+                    setLastEditedCurrentPolygonIndex(index)
+                  },
+                }}
+              >
+                <Popup autoClose={false} closeOnClick={false}>
+                  <div className="p-2">
+                    <p className="text-sm font-medium mb-2">Vértice {index + 1}</p>
+                    {currentPolygon.length > 3 && (
+                      <button
+                        onClick={() => removeCurrentPolygonVertex(index)}
+                        className="w-full mb-2 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Remover Vértice
+                      </button>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Arraste para mover
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Handles nos pontos médios para adicionar vértices */}
+            {currentPolygon.length >= 2 && getCurrentPolygonMidpoints().map((midpoint, index) => (
+              <Marker
+                key={`current-midpoint-${index}`}
+                position={[midpoint.lat, midpoint.lng]}
+                icon={createMidpointHandleIcon()}
+                zIndexOffset={999}
+                eventHandlers={{
+                  click: (e) => {
+                    e.originalEvent.stopPropagation()
+                    addCurrentPolygonVertexAtMidpoint(index)
+                  },
+                }}
+              >
+                <Popup>
+                  <div className="p-2">
+                    <p className="text-xs text-gray-600">Clique para adicionar vértice</p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </>
         )}
       </MapContainer>
 
       {isDrawingPolygon && (
-        <div className="absolute top-4 right-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-[1000] border border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-            Clique no mapa para adicionar pontos ao polígono
+        <div className="absolute top-4 right-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-[1000] border border-gray-200 dark:border-gray-700 max-w-xs">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Criando Polígono
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {currentPolygon.length} ponto(s) adicionado(s)
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            • Clique no mapa para adicionar vértices
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            • Arraste os handles brancos para mover vértices
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            • Clique nos círculos azuis para adicionar vértices
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+            • Clique nos vértices para remover
+          </p>
+          <div className="border-t border-gray-200 dark:border-gray-600 pt-2 mt-2 mb-3">
+            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Atalhos:</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              • <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">Ctrl+Z</kbd> Desfazer último vértice
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              • <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">Ctrl+C</kbd> Cancelar criação
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              • <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">Backspace</kbd> ou <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs">Delete</kbd> Apagar vértice selecionado
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 font-medium">
+            {currentPolygon.length} vértice(s) adicionado(s)
           </p>
           <div className="flex space-x-2">
             <button
@@ -534,6 +947,7 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
               onClick={() => {
                 setCurrentPolygon([])
                 setIsDrawingPolygon(false)
+                setLastEditedCurrentPolygonIndex(null) // Resetar ao cancelar
               }}
               className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-400 dark:hover:bg-gray-500 text-sm"
             >
@@ -555,9 +969,18 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
           <p className="text-xs text-gray-300 mb-1">
             • Clique nos vértices para remover
           </p>
-          <p className="text-xs text-gray-300 mb-3">
+          <p className="text-xs text-gray-300 mb-1">
             • Clique no mapa para adicionar vértice na posição
           </p>
+          <div className="border-t border-gray-600 pt-2 mt-2 mb-3">
+            <p className="text-xs font-semibold text-gray-200 mb-1">Atalhos:</p>
+            <p className="text-xs text-gray-300">
+              • <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-xs">Ctrl+Z</kbd> Desfazer último vértice
+            </p>
+            <p className="text-xs text-gray-300">
+              • <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-xs">Backspace</kbd> ou <kbd className="px-1.5 py-0.5 bg-gray-700 rounded text-xs">Delete</kbd> Apagar vértice selecionado
+            </p>
+          </div>
           <button
             onClick={() => setEditingPolygon(null)}
             className="w-full px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"

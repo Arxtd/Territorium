@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import MapEditor from '../components/MapEditor'
-import { Save, X } from 'lucide-react'
+import { Save, X, HelpCircle } from 'lucide-react'
 
 const MapCreate = () => {
   const { userProfile } = useAuth()
@@ -16,6 +16,51 @@ const MapCreate = () => {
   const [mode, setMode] = useState('view')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [globalMap, setGlobalMap] = useState(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  // Buscar o mapa geral (congregacao) ao carregar
+  useEffect(() => {
+    const fetchGlobalMap = async () => {
+      try {
+        const { data: mapsData, error: mapsError } = await supabase
+          .from('maps')
+          .select('id, name, description, type')
+          .eq('type', 'congregacao')
+          .limit(1)
+          .single()
+
+        if (mapsError && mapsError.code !== 'PGRST116') {
+          // PGRST116 = nenhum resultado encontrado, não é um erro crítico
+          console.error('Error fetching global map:', mapsError)
+          return
+        }
+
+        if (mapsData) {
+          // Buscar pontos e polígonos do mapa geral
+          const { data: points } = await supabase
+            .from('map_points')
+            .select('*')
+            .eq('map_id', mapsData.id)
+
+          const { data: polygons } = await supabase
+            .from('map_polygons')
+            .select('*')
+            .eq('map_id', mapsData.id)
+
+          setGlobalMap({
+            ...mapsData,
+            points: points || [],
+            polygons: polygons || [],
+          })
+        }
+      } catch (err) {
+        console.error('Error fetching global map:', err)
+      }
+    }
+
+    fetchGlobalMap()
+  }, [])
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -144,9 +189,19 @@ const MapCreate = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Modo de Edição
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Modo de Edição
+              </label>
+              {/* Botão de ajuda - apenas em telas maiores */}
+              <button
+                onClick={() => setShowShortcuts(!showShortcuts)}
+                className="hidden md:inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title="Ver atalhos de teclado"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
+            </div>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setMode('view')}
@@ -189,12 +244,47 @@ const MapCreate = () => {
                 Adicionar Polígono
               </button>
             </div>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {mode === 'edit' && 'Clique em pontos ou polígonos para editar, arraste para mover e clique para remover'}
-              {mode === 'point' && 'Clique no mapa para adicionar pontos'}
-              {mode === 'polygon' && 'Clique no mapa para adicionar vértices do polígono'}
-              {mode === 'view' && 'Visualize o mapa sem edições'}
-            </p>
+            
+            {/* Modal de atalhos */}
+            {showShortcuts && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                    Atalhos de Teclado
+                  </h3>
+                  <button
+                    onClick={() => setShowShortcuts(false)}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded text-xs font-mono">
+                      Ctrl+Z
+                    </kbd>
+                    <span>Desfazer último vértice ou ponto adicionado</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded text-xs font-mono">
+                      Ctrl+C
+                    </kbd>
+                    <span>Cancelar criação de polígono</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded text-xs font-mono">
+                      Backspace
+                    </kbd>
+                    <span>ou</span>
+                    <kbd className="px-2 py-1 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 rounded text-xs font-mono">
+                      Delete
+                    </kbd>
+                    <span>Apagar vértice ou ponto selecionado</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -204,6 +294,7 @@ const MapCreate = () => {
               onPointsChange={setPoints}
               onPolygonsChange={setPolygons}
               mode={mode}
+              globalMap={globalMap}
             />
           </div>
 
