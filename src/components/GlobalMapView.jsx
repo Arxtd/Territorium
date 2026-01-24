@@ -210,7 +210,7 @@ const HeatmapLayer = ({ maps, visitsData }) => {
   return null
 }
 
-const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
+const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }) => {
   const { userProfile, isSuperintendente } = useAuth()
   const [maps, setMaps] = useState([])
   const [loading, setLoading] = useState(true)
@@ -559,7 +559,7 @@ const GlobalMapView = ({ showTitle = true, height = '500px' }) => {
         </div>
       </div>
 
-      {maps.length > 0 && showTitle && (
+      {maps.length > 0 && showLegend && (
         <div className="mt-6 bg-white dark:bg-gray-800 shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Legenda</h3>
           <div className="space-y-4">

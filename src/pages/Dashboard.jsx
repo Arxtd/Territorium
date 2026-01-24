@@ -288,7 +288,7 @@ const Dashboard = () => {
       </div>
 
       <div className="mt-8">
-        <GlobalMapView showTitle={true} height="500px" />
+        <GlobalMapView showTitle={true} showLegend={false} height="500px" />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
