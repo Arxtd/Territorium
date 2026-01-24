@@ -131,6 +131,17 @@ const Dashboard = () => {
     }
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour >= 5 && hour < 12) {
+      return 'Bom dia'
+    } else if (hour >= 12 && hour < 18) {
+      return 'Boa tarde'
+    } else {
+      return 'Boa noite'
+    }
+  }
+
   const statCards = [
     {
       title: isSuperintendente ? 'Total de Mapas' : 'Total de Mapas',
@@ -156,7 +167,7 @@ const Dashboard = () => {
     <div className="px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Bem-vindo, {userProfile?.name || 'Usuário'}
+          {getGreeting()}, {userProfile?.name || 'Usuário'}
         </h1>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           {isSuperintendente

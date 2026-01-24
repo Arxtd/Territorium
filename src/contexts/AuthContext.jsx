@@ -133,8 +133,24 @@ export const AuthProvider = ({ children }) => {
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      // Limpar estado local primeiro
+      setUser(null)
+      setUserProfile(null)
+      
+      // Fazer logout no Supabase
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Erro ao fazer logout:', error)
+        throw error
+      }
+    } catch (error) {
+      console.error('Erro no processo de logout:', error)
+      // Mesmo com erro, limpar o estado local
+      setUser(null)
+      setUserProfile(null)
+      throw error
+    }
   }
 
   const value = {

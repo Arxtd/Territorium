@@ -13,8 +13,17 @@ const Layout = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const handleSignOut = async () => {
-    await signOut()
-    navigate('/login')
+    try {
+      await signOut()
+      // Limpar estado local se necessário
+      setSidebarOpen(false)
+      // Navegar para login após logout bem-sucedido
+      navigate('/login', { replace: true })
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      // Mesmo com erro, tentar navegar para login
+      navigate('/login', { replace: true })
+    }
   }
 
   const navItems = [
