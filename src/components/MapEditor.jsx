@@ -579,9 +579,9 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
 
       {/* Controles de Visualização do Mapa */}
       {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-lg shadow-lg border border-white/20 dark:border-gray-700/30 overflow-hidden">
+        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
           <div className="p-2">
-            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 px-2">
+            <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2 px-2">
               Visualização
             </div>
             <div className="flex flex-col space-y-1">
@@ -589,8 +589,8 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
                   onClick={() => setMapType('roadmap')}
                   className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
                     mapType === 'roadmap'
-                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   <Map className="h-4 w-4 mr-2" />
@@ -600,8 +600,8 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
                   onClick={() => setMapType('satellite')}
                   className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
                     mapType === 'satellite'
-                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   <Satellite className="h-4 w-4 mr-2" />
@@ -958,7 +958,7 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
       )}
 
       {editingPolygon && (mode === 'edit' || mode === 'polygon') && (
-        <div className="absolute top-4 right-4 bg-gray-800 dark:bg-gray-900 text-white p-4 rounded-lg shadow-lg z-[1000] border border-gray-700 max-w-xs">
+        <div className="absolute top-4 right-4 bg-gray-800 dark:bg-dark-surface text-white p-4 rounded-lg shadow-lg z-[1000] border border-gray-700 dark:border-dark-border max-w-xs">
           <p className="text-sm font-medium mb-2">Editando Polígono</p>
           <p className="text-xs text-gray-300 mb-1">
             • Arraste os handles brancos para mover vértices

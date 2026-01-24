@@ -41,12 +41,12 @@ const Layout = ({ children }) => {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-black flex">
       {/* Sidebar Desktop */}
       <aside className={`hidden md:block fixed inset-y-0 left-0 z-30 transition-all duration-300 overflow-hidden ${
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}>
-        <div className="flex flex-col h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <div className="flex flex-col h-full bg-white dark:bg-black border-r border-gray-200 dark:border-gray-900 transition-colors duration-200">
           <div className={`flex flex-col items-center flex-shrink-0 pt-5 pb-4 relative ${
             sidebarCollapsed ? 'px-2' : 'px-4'
           }`}>
@@ -57,7 +57,7 @@ const Layout = ({ children }) => {
                 </h1>
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 hover:scale-110 z-10"
+                  className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white dark:bg-black border border-gray-200 dark:border-gray-900 shadow-md hover:shadow-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 hover:scale-110 z-10"
                   aria-label="Minimizar sidebar"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -71,7 +71,7 @@ const Layout = ({ children }) => {
                 </h1>
                 <button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  className="p-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md hover:shadow-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 hover:scale-110"
+                  className="p-1.5 rounded-full bg-white dark:bg-black border border-gray-200 dark:border-gray-900 shadow-md hover:shadow-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-all duration-200 hover:scale-110"
                   aria-label="Expandir sidebar"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -92,8 +92,8 @@ const Layout = ({ children }) => {
                       sidebarCollapsed ? 'justify-center px-1' : 'px-3'
                     } py-2 text-sm font-medium rounded-md transition-all duration-200 ease-in-out relative ${
                       isActive
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+                        ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white'
                     } ${!sidebarCollapsed ? 'hover:translate-x-1' : ''}`}
                     title={sidebarCollapsed ? item.label : ''}
                   >
@@ -119,7 +119,7 @@ const Layout = ({ children }) => {
               })}
             </nav>
           </div>
-          <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-700 transition-colors duration-200 ${
+          <div className={`flex-shrink-0 border-t border-gray-200 dark:border-gray-900 transition-colors duration-200 ${
             sidebarCollapsed ? 'p-2' : 'p-4'
           }`}>
             {!sidebarCollapsed ? (
@@ -142,7 +142,7 @@ const Layout = ({ children }) => {
                       e.preventDefault()
                       toggleTheme()
                     }}
-                    className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95"
+                    className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95"
                     aria-label="Alternar tema"
                     type="button"
                   >
@@ -154,7 +154,7 @@ const Layout = ({ children }) => {
                   </button>
                   <button
                     onClick={handleSignOut}
-                    className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95"
+                    className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95"
                     aria-label="Sair"
                     type="button"
                   >
@@ -169,7 +169,7 @@ const Layout = ({ children }) => {
                     e.preventDefault()
                     toggleTheme()
                   }}
-                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95 relative group"
+                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95 relative group"
                   aria-label="Alternar tema"
                   type="button"
                   title="Alternar tema"
@@ -185,7 +185,7 @@ const Layout = ({ children }) => {
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95 relative group"
+                  className="flex-shrink-0 p-2 rounded-md text-gray-400 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95 relative group"
                   aria-label="Sair"
                   type="button"
                   title="Sair"
@@ -213,18 +213,18 @@ const Layout = ({ children }) => {
 
       {/* Mobile sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 transform ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-black transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } transition-transform duration-300 ease-in-out md:hidden shadow-xl`}
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-4 py-5 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-5 border-b border-gray-200 dark:border-gray-900">
             <h1 className="text-2xl font-bold text-primary-600 dark:text-primary-400">
               Territorium
             </h1>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110 active:scale-95"
+                className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface/50 transition-all duration-200 hover:scale-110 active:scale-95"
             >
               <X className="h-6 w-6" />
             </button>
@@ -241,8 +241,8 @@ const Layout = ({ children }) => {
                     onClick={() => setSidebarOpen(false)}
                     className={`group flex items-center px-3 py-2 text-base font-medium rounded-md transition-all duration-200 ease-in-out ${
                       isActive
-                        ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white hover:translate-x-1'
+                        ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white hover:translate-x-1'
                     }`}
                   >
                     <Icon
@@ -258,7 +258,7 @@ const Layout = ({ children }) => {
               })}
             </nav>
           </div>
-          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-900 p-4">
             <div className="flex items-center">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
@@ -305,10 +305,10 @@ const Layout = ({ children }) => {
         sidebarCollapsed ? 'md:ml-16' : 'md:ml-64'
       }`}>
         {/* Mobile header */}
-        <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+        <div className="md:hidden bg-white dark:bg-black border-b border-gray-200 dark:border-gray-900 px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 hover:scale-110 active:scale-95"
+                className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-surface/50 transition-all duration-200 hover:scale-110 active:scale-95"
           >
             <Menu className="h-6 w-6" />
           </button>
@@ -321,7 +321,7 @@ const Layout = ({ children }) => {
                 e.preventDefault()
                 toggleTheme()
               }}
-              className="p-2 rounded-md text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-2 rounded-md text-gray-400 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-900"
               aria-label="Alternar tema"
               type="button"
             >

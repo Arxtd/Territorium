@@ -36,17 +36,17 @@ const Login = () => {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-100 dark:from-black dark:via-black dark:to-black py-12 px-4 sm:px-6 lg:px-8">
       {/* Decorative background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary-200 dark:bg-primary-900/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-xl opacity-30 animate-blob"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary-300 dark:bg-primary-800/30 rounded-full mix-blend-multiply dark:mix-blend-soft-light filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
       </div>
       
-      <div className="relative max-w-md w-full space-y-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl p-10 rounded-2xl shadow-2xl transition-all duration-300 border border-white/20 dark:border-gray-700/50">
+      <div className="relative max-w-md w-full space-y-8 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-xl p-10 rounded-2xl shadow-2xl transition-all duration-300 border border-white/20 dark:border-dark-border/50">
         <button
           onClick={toggleTheme}
-          className="absolute top-5 right-5 p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-gray-700/80 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95 hover:text-primary-600 dark:hover:text-primary-400"
+                  className="absolute top-5 right-5 p-2.5 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100/80 dark:hover:bg-dark-surface/80 focus:outline-none transition-all duration-200 hover:scale-110 active:scale-95 hover:text-primary-600 dark:hover:text-primary-400"
           aria-label="Alternar tema"
         >
           {isDark ? (

@@ -373,9 +373,9 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden relative">
         {/* Controles de Camadas */}
-        <div className="absolute top-4 right-4 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-lg shadow-lg p-4 border border-white/20 dark:border-gray-700/30">
+        <div className="absolute top-4 right-4 z-[1000] bg-white/90 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-800">
           <div className="flex items-center mb-3">
-            <Layers className="h-5 w-5 text-gray-500 dark:text-gray-400 mr-2" />
+            <Layers className="h-5 w-5 text-gray-600 dark:text-gray-300 mr-2" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Camadas</h3>
           </div>
           <div className="space-y-2">
@@ -388,14 +388,14 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
                   type="checkbox"
                   checked={visibleLayers[type]}
                   onChange={() => toggleLayer(type)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
+                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
                 />
                 <div className="ml-3 flex items-center">
                   <div
                     className="w-3 h-3 rounded mr-2"
                     style={{ backgroundColor: getTypeColor(type) }}
                   ></div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                  <span className="text-sm text-gray-700 dark:text-gray-200">
                     {getTypeLabel(type)} ({mapsByType[type]?.length || 0})
                   </span>
                 </div>
@@ -404,17 +404,17 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
           </div>
           
           {/* Toggle do Mapa de Calor */}
-          <div className="mt-4 pt-4 border-t border-white/20 dark:border-gray-700/30">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
             <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 checked={heatmapMode}
                 onChange={(e) => setHeatmapMode(e.target.checked)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
               />
               <div className="ml-3 flex items-center">
-                <Flame className="h-4 w-4 text-orange-500 mr-2" />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <Flame className="h-4 w-4 text-orange-500 dark:text-orange-400 mr-2" />
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   Mapa de Calor
                 </span>
               </div>
@@ -429,9 +429,9 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
 
         {/* Controles de Visualização do Mapa */}
         {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
-          <div className="absolute bottom-4 left-4 z-[1000] bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-lg shadow-lg border border-white/20 dark:border-gray-700/30 overflow-hidden">
+          <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
             <div className="p-2">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 px-2">
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2 px-2">
                 Visualização
               </div>
               <div className="flex flex-col space-y-1">
@@ -439,8 +439,8 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
                   onClick={() => setMapType('roadmap')}
                   className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
                     mapType === 'roadmap'
-                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   <Map className="h-4 w-4 mr-2" />
@@ -450,8 +450,8 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
                   onClick={() => setMapType('satellite')}
                   className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
                     mapType === 'satellite'
-                      ? 'bg-primary-600/90 text-white backdrop-blur-sm'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-800/50'
+                      ? 'bg-primary-600 text-white'
+                      : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   <Satellite className="h-4 w-4 mr-2" />

@@ -9,10 +9,17 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #ffffff;
+  transition: background-color 0.2s ease;
+}
+
+body.dark {
+  background-color: #000000;
 }
 
 #root {
   min-height: 100vh;
+  background-color: inherit;
 }
 
 @keyframes blob {
