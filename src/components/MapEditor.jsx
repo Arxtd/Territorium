@@ -60,6 +60,27 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
+// Criar ícone customizado para pontos com cores suaves e clean
+const createCustomPointIcon = (color = '#93c5fd') => {
+  return L.divIcon({
+    className: 'custom-point-icon',
+    html: `
+      <div style="
+        width: 18px;
+        height: 18px;
+        background: ${color};
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08);
+        transform: translate(-50%, -50%);
+        transition: all 0.2s ease;
+      "></div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  })
+}
+
 // Criar ícone customizado para handles de vértices (quadrados brancos)
 const createVertexHandleIcon = () => {
   return L.divIcon({
@@ -660,6 +681,7 @@ const MapEditor = ({ initialPoints = [], initialPolygons = [], onPointsChange, o
           <Marker
             key={point.id}
             position={[point.lat, point.lng]}
+            icon={createCustomPointIcon('#93c5fd')}
             draggable={(mode === 'edit' || mode === 'point') && !editingPoint && !editingPolygon}
             eventHandlers={{
               dragstart: () => {

@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, Polygon, Popup, useMap } from 'react-l
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
-import { Layers, Flame, Map, Satellite } from 'lucide-react'
+import { Layers, Map, Satellite } from 'lucide-react'
 
 // Componente para Google Maps Tile Layer
 const GoogleTileLayer = ({ apiKey, mapType = 'roadmap' }) => {
@@ -54,15 +54,6 @@ const GoogleTileLayer = ({ apiKey, mapType = 'roadmap' }) => {
   return null
 }
 
-// Importar leaflet.heat dinamicamente
-let heatPluginLoaded = false
-const loadHeatPlugin = async () => {
-  if (!heatPluginLoaded && typeof window !== 'undefined') {
-    await import('leaflet.heat')
-    heatPluginLoaded = true
-  }
-}
-
 // Fix para ícones do Leaflet
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -70,6 +61,27 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
+
+// Criar ícone customizado para pontos com cores suaves e clean
+const createCustomPointIcon = (color) => {
+  return L.divIcon({
+    className: 'custom-point-icon',
+    html: `
+      <div style="
+        width: 18px;
+        height: 18px;
+        background: ${color};
+        border: 3px solid white;
+        border-radius: 50%;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08);
+        transform: translate(-50%, -50%);
+        transition: all 0.2s ease;
+      "></div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  })
+}
 
 // Componente para ajustar o mapa aos bounds do mapa da congregação
 const FitBoundsToCongregacao = ({ congregacaoMap }) => {
@@ -111,111 +123,11 @@ const FitBoundsToCongregacao = ({ congregacaoMap }) => {
   return null
 }
 
-// Componente para renderizar o mapa de calor
-const HeatmapLayer = ({ maps, visitsData }) => {
-  const map = useMap()
-  const heatLayerRef = useRef(null)
-
-  useEffect(() => {
-    if (!maps || maps.length === 0 || !visitsData) return
-
-    // Carregar plugin do heatmap
-    loadHeatPlugin().then(() => {
-      if (!L.heatLayer) {
-        console.error('leaflet.heat plugin não está disponível')
-        return
-      }
-
-      // Calcular pontos de calor baseados nas visitas
-      const heatPoints = []
-
-      maps.forEach((mapItem) => {
-        const visitCount = visitsData[mapItem.id] || 0
-        
-        // Se não houver visitas, não adicionar ao heatmap
-        if (visitCount === 0) return
-
-        // Adicionar pontos dos mapas com intensidade baseada no número de visitas
-        mapItem.points.forEach((point) => {
-          // A intensidade varia de 0.1 a 1.0 baseado no número de visitas
-          // Normalizar para um máximo de 10 visitas (pode ajustar conforme necessário)
-          const intensity = Math.min(visitCount / 10, 1.0)
-          heatPoints.push([point.latitude, point.longitude, intensity])
-        })
-
-        // Para polígonos, adicionar pontos nos vértices e no centro
-        mapItem.polygons.forEach((polygon) => {
-          if (polygon.coordinates && Array.isArray(polygon.coordinates)) {
-            const visitCount = visitsData[mapItem.id] || 0
-            const intensity = Math.min(visitCount / 10, 1.0)
-
-            // Calcular centro do polígono
-            let sumLat = 0
-            let sumLng = 0
-            let count = 0
-
-            polygon.coordinates.forEach((coord) => {
-              if (Array.isArray(coord) && coord.length >= 2) {
-                sumLat += coord[0]
-                sumLng += coord[1]
-                count++
-                // Adicionar cada vértice também
-                heatPoints.push([coord[0], coord[1], intensity * 0.7])
-              }
-            })
-
-            if (count > 0) {
-              const centerLat = sumLat / count
-              const centerLng = sumLng / count
-              heatPoints.push([centerLat, centerLng, intensity])
-            }
-          }
-        })
-      })
-
-      if (heatPoints.length > 0) {
-        // Remover layer anterior se existir
-        if (heatLayerRef.current) {
-          map.removeLayer(heatLayerRef.current)
-        }
-
-        // Criar novo heat layer
-        const heatLayer = L.heatLayer(heatPoints, {
-          radius: 25,
-          blur: 15,
-          maxZoom: 17,
-          gradient: {
-            0.0: 'blue',    // Frio (poucas visitas)
-            0.3: 'cyan',
-            0.5: 'lime',
-            0.7: 'yellow',
-            1.0: 'red'      // Quente (muitas visitas)
-          },
-          max: 1.0,
-          minOpacity: 0.3
-        })
-
-        heatLayer.addTo(map)
-        heatLayerRef.current = heatLayer
-      }
-    })
-
-    return () => {
-      if (heatLayerRef.current) {
-        map.removeLayer(heatLayerRef.current)
-      }
-    }
-  }, [map, maps, visitsData])
-
-  return null
-}
 
 const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }) => {
   const { userProfile, isSuperintendente } = useAuth()
   const [maps, setMaps] = useState([])
   const [loading, setLoading] = useState(true)
-  const [visitsData, setVisitsData] = useState({})
-  const [heatmapMode, setHeatmapMode] = useState(false)
   const [mapType, setMapType] = useState('roadmap') // roadmap, satellite
   const [visibleLayers, setVisibleLayers] = useState({
     congregacao: true,
@@ -225,7 +137,6 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
 
   useEffect(() => {
     fetchAllMaps()
-    fetchVisitsData()
   }, [userProfile, isSuperintendente])
 
   const fetchAllMaps = async () => {
@@ -267,26 +178,6 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
     }
   }
 
-  const fetchVisitsData = async () => {
-    try {
-      // Buscar todas as visitas
-      const { data: visits, error } = await supabase
-        .from('map_visits')
-        .select('map_id')
-
-      if (error) throw error
-
-      // Contar visitas por mapa
-      const visitsCount = {}
-      visits?.forEach((visit) => {
-        visitsCount[visit.map_id] = (visitsCount[visit.map_id] || 0) + 1
-      })
-
-      setVisitsData(visitsCount)
-    } catch (error) {
-      console.error('Error fetching visits data:', error)
-    }
-  }
 
   const toggleLayer = (type) => {
     setVisibleLayers((prev) => ({
@@ -298,13 +189,13 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
   const getTypeColor = (type) => {
     switch (type) {
       case 'congregacao':
-        return '#3b82f6' // Azul
+        return '#93c5fd' // Azul suave (sky-300)
       case 'grupo':
-        return '#10b981' // Verde
+        return '#86efac' // Verde suave (green-300)
       case 'submapa':
-        return '#f59e0b' // Amarelo/Laranja
+        return '#fcd34d' // Amarelo suave (yellow-300)
       default:
-        return '#6b7280' // Cinza
+        return '#cbd5e1' // Cinza suave (slate-300)
     }
   }
 
@@ -372,8 +263,8 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
       )}
 
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden relative">
-        {/* Controles de Camadas */}
-        <div className="absolute top-4 right-4 z-[1000] bg-white/90 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-800">
+        {/* Controles de Camadas - Oculto em telas pequenas */}
+        <div className="hidden md:block absolute top-4 right-4 z-[1000] bg-white/90 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-800">
           <div className="flex items-center mb-3">
             <Layers className="h-5 w-5 text-gray-600 dark:text-gray-300 mr-2" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Camadas</h3>
@@ -402,60 +293,34 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
               </label>
             ))}
           </div>
-          
-          {/* Toggle do Mapa de Calor */}
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
-            <label className="flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={heatmapMode}
-                onChange={(e) => setHeatmapMode(e.target.checked)}
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
-              />
-              <div className="ml-3 flex items-center">
-                <Flame className="h-4 w-4 text-orange-500 dark:text-orange-400 mr-2" />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-                  Mapa de Calor
-                </span>
-              </div>
-            </label>
-            {heatmapMode && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 ml-7">
-                Regiões quentes = mais visitadas
-              </p>
-            )}
-          </div>
         </div>
 
-        {/* Controles de Visualização do Mapa */}
+        {/* Controles de Visualização do Mapa - Apenas ícones */}
         {import.meta.env.VITE_GOOGLE_MAPS_API_KEY && (
           <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 dark:bg-gray-900/95 backdrop-blur-md rounded-lg shadow-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-            <div className="p-2">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2 px-2">
-                Visualização
-              </div>
+            <div className="p-1.5">
               <div className="flex flex-col space-y-1">
                 <button
                   onClick={() => setMapType('roadmap')}
-                  className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                  className={`flex items-center justify-center p-2 rounded-md transition-colors ${
                     mapType === 'roadmap'
                       ? 'bg-primary-600 text-white'
                       : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
+                  title="Mapa"
                 >
-                  <Map className="h-4 w-4 mr-2" />
-                  Mapa
+                  <Map className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => setMapType('satellite')}
-                  className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors ${
+                  className={`flex items-center justify-center p-2 rounded-md transition-colors ${
                     mapType === 'satellite'
                       ? 'bg-primary-600 text-white'
                       : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
+                  title="Satélite"
                 >
-                  <Satellite className="h-4 w-4 mr-2" />
-                  Satélite
+                  <Satellite className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -491,10 +356,7 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
                 />
               )}
               {congregacaoMap && <FitBoundsToCongregacao congregacaoMap={congregacaoMap} />}
-              {heatmapMode && (
-                <HeatmapLayer maps={visibleMaps} visitsData={visitsData} />
-              )}
-              {!heatmapMode && visibleMaps.map((map) => {
+              {visibleMaps.map((map) => {
                 const color = getTypeColor(map.type)
 
                 return (
@@ -503,6 +365,7 @@ const GlobalMapView = ({ showTitle = true, showLegend = true, height = '500px' }
                       <Marker
                         key={point.id}
                         position={[point.latitude, point.longitude]}
+                        icon={createCustomPointIcon(color)}
                       >
                         <Popup>
                           <div>

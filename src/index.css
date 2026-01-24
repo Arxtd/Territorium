@@ -45,6 +45,18 @@ body.dark {
   animation-delay: 2s;
 }
 
+/* Estilos para ícones customizados de pontos no mapa */
+.custom-point-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Efeito hover suave nos pontos do mapa */
+.custom-point-icon:hover div {
+  transform: translate(-50%, -50%) scale(1.15) !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.18), 0 0 0 0.5px rgba(0,0,0,0.1) !important;
+}
+
 
 
 
